@@ -4,9 +4,9 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.time.Instant;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /**
  * For implement this task focus on clear code, and make this solution as simple readable as possible
@@ -19,6 +19,8 @@ import java.util.Optional;
  */
 public class DocumentManager {
 
+    private final Map<String, Document> documentStorage = new HashMap<>();
+
     /**
      * Implementation of this method should upsert the document to your storage
      * And generate unique id if it does not exist, don't change [created] field
@@ -27,8 +29,12 @@ public class DocumentManager {
      * @return saved document
      */
     public Document save(Document document) {
+      if (document.getId() == null || document.getId().isEmpty()) {
+          document.setId(UUID.randomUUID().toString());
 
-        return null;
+      }
+      documentStorage.put(document.getId(), document);
+        return document;
     }
 
     /**
@@ -38,8 +44,14 @@ public class DocumentManager {
      * @return list matched documents
      */
     public List<Document> search(SearchRequest request) {
+        return documentStorage.values().stream()
+                .filter(document -> request.getTitlePrefixes() == null || request.getTitlePrefixes().stream().anyMatch(prefix -> document.getTitle().startsWith(prefix)))
+                .filter(document -> request.getContainsContents() == null || request.getContainsContents().stream().anyMatch(content -> document.getContent().contains(content)))
+                .filter(document -> request.getAuthorIds() == null || request.getAuthorIds().contains(document.getAuthor().getId()))
+                .filter(document -> request.getCreatedFrom() == null || !document.getCreated().isBefore(request.getCreatedFrom()))
+                .filter(document -> request.getCreatedTo() == null || !document.getCreated().isAfter(request.getCreatedTo()))
+                .collect(Collectors.toList());
 
-        return Collections.emptyList();
     }
 
     /**
@@ -49,8 +61,7 @@ public class DocumentManager {
      * @return optional document
      */
     public Optional<Document> findById(String id) {
-
-        return Optional.empty();
+        return Optional.ofNullable(documentStorage.get(id));
     }
 
     @Data
